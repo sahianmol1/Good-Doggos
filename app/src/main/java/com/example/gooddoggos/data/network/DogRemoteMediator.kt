@@ -11,38 +11,18 @@ import com.example.gooddoggos.models.GoodDoggoItem
 import com.example.gooddoggos.models.RemoteKeys
 import retrofit2.HttpException
 import java.io.IOException
-import java.io.InvalidObjectException
 
 @OptIn(ExperimentalPagingApi::class)
 class DogRemoteMediator(private val dogApi: DogApi, private val dogDatabase: DogDatabase) : RemoteMediator<Int, GoodDoggoItem>() {
     override suspend fun load(loadType: LoadType, state: PagingState<Int, GoodDoggoItem>): MediatorResult {
         val page = when (loadType) {
-            LoadType.REFRESH -> {
-                val remoteKeys = getRemoteKeyClosestToCurrentPosition(state)
-                remoteKeys?.nextKey?.minus(1) ?: DOGS_STARTING_PAGE_INDEX
-            }
-            LoadType.PREPEND -> {
-                val remoteKeys = getRemoteKeyForFirstItem(state)
-                if (remoteKeys == null) {
-                    throw InvalidObjectException("Remote key and the prevKey should not be null")
-                }
-                val prevKey = remoteKeys.prevKey
-                if (prevKey == null) {
-                    return MediatorResult.Success(endOfPaginationReached = false)
-                }
-                remoteKeys.prevKey
-            }
-            LoadType.APPEND -> {
-                val remoteKeys = getRemoteKeyForLastItem(state)
-                if (remoteKeys?.nextKey == null) {
-                    throw InvalidObjectException("Remote key should not be null for $loadType")
-                }
-                remoteKeys.nextKey
-            }
+            LoadType.REFRESH -> DOGS_STARTING_PAGE_INDEX
+            LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
+            LoadType.APPEND -> getRemoteKeyForLastItem(state)?.nextKey
         }
 
         try {
-            val dogs = dogApi.getAllDogs(page = page)
+            val dogs = dogApi.getAllDogs(page = page!!)
             val endOfPaginationReached = dogs.isEmpty()
 
             dogDatabase.withTransaction {
@@ -101,5 +81,9 @@ class DogRemoteMediator(private val dogApi: DogApi, private val dogDatabase: Dog
                 dogDatabase.getKeysDao().getRemoteKeysDogId(dogId)
             }
         }
+    }
+
+    override suspend fun initialize(): InitializeAction {
+        return InitializeAction.SKIP_INITIAL_REFRESH
     }
 }
