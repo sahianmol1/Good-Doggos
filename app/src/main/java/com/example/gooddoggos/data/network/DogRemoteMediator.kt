@@ -11,7 +11,6 @@ import com.example.gooddoggos.models.GoodDoggoItem
 import com.example.gooddoggos.models.RemoteKeys
 import retrofit2.HttpException
 import java.io.IOException
-import java.io.InvalidObjectException
 
 @OptIn(ExperimentalPagingApi::class)
 class DogRemoteMediator(private val dogApi: DogApi, private val dogDatabase: DogDatabase) : RemoteMediator<Int, GoodDoggoItem>() {
@@ -22,7 +21,7 @@ class DogRemoteMediator(private val dogApi: DogApi, private val dogDatabase: Dog
             LoadType.APPEND -> {
                 val remoteKey = getRemoteKeyForLastItem(state)
                 if (remoteKey?.nextKey == null) {
-                    throw InvalidObjectException("Remote key should not be null for $loadType")
+                    return MediatorResult.Success(endOfPaginationReached = true)
                 }
                 remoteKey.nextKey
             }
@@ -90,7 +89,7 @@ class DogRemoteMediator(private val dogApi: DogApi, private val dogDatabase: Dog
         }
     }
 
-//    override suspend fun initialize(): InitializeAction {
-//        return InitializeAction.SKIP_INITIAL_REFRESH
-//    }
+    override suspend fun initialize(): InitializeAction {
+        return InitializeAction.SKIP_INITIAL_REFRESH
+    }
 }
